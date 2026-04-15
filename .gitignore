@@ -1,0 +1,30 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# User-specific config and calibration
+settings.json
+calibration.json
+gesture_calibration.json
+gesture_mouse_settings.json
+
+# Claude Code local config
+.claude/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

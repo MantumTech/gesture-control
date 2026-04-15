@@ -1,0 +1,2476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Your Own Gesture-Controlled Mouse | Mantum Tech</title>
+    <style>
+        :root {
+            --primary: #0d9488;
+            --primary-dark: #0f766e;
+            --primary-light: #ccfbf1;
+            --primary-glow: rgba(13, 148, 136, 0.15);
+            --bg: #f8fafc;
+            --bg-card: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+            --safety-bg: #fef2f2;
+            --safety-border: #ef4444;
+            --safety-text: #991b1b;
+            --tip-bg: #eff6ff;
+            --tip-border: #3b82f6;
+            --tip-text: #1e40af;
+            --milestone-bg: #f0fdf4;
+            --milestone-border: #22c55e;
+            --milestone-text: #166534;
+            --sidebar-width: 280px;
+            --header-height: 64px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
+            z-index: 100;
+        }
+
+        .header-brand {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-brand svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            margin-right: 0.75rem;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 22px;
+            height: 2px;
+            background: var(--text);
+            margin: 5px 0;
+            transition: 0.3s;
+            border-radius: 2px;
+        }
+
+        .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+        .hamburger.active span:nth-child(2) { opacity: 0; }
+        .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--header-height));
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 1.5rem 0;
+            z-index: 90;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-section {
+            padding: 0 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.4rem 0;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.88rem;
+            transition: color 0.2s;
+            cursor: pointer;
+        }
+
+        .sidebar-link:hover { color: var(--primary); }
+        .sidebar-link.active { color: var(--primary); font-weight: 600; }
+
+        .sidebar-link input[type="checkbox"] {
+            margin-top: 3px;
+            accent-color: var(--primary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .progress-bar-container {
+            padding: 0 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-bar-track {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+
+        .progress-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+            text-align: center;
+        }
+
+        /* Main content */
+        .main {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--header-height);
+            padding: 2.5rem 3rem 4rem;
+            max-width: 900px;
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            padding: 3rem 0 2.5rem;
+        }
+
+        .hero h1 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .hero h1 span { color: var(--primary); }
+
+        .hero p {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-demo {
+            background: var(--code-bg);
+            border-radius: 12px;
+            padding: 1.75rem;
+            max-width: 520px;
+            margin: 0 auto;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: var(--code-text);
+            text-align: left;
+            line-height: 1.8;
+        }
+
+        .hero-demo .comment { color: #6b7280; }
+        .hero-demo .keyword { color: #c084fc; }
+        .hero-demo .string { color: #86efac; }
+        .hero-demo .func { color: #67e8f9; }
+
+        /* Requirements box */
+        .requirements-box {
+            background: var(--primary-light);
+            border: 1px solid var(--primary);
+            border-radius: 10px;
+            padding: 1.75rem;
+            margin: 2rem 0 3rem;
+        }
+
+        .requirements-box h3 {
+            color: var(--primary-dark);
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        .requirements-box ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .requirements-box li {
+            padding: 0.3rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text);
+        }
+
+        .requirements-box li::before {
+            content: "\2713";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* Phase headings */
+        .phase-header {
+            margin: 3.5rem 0 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .phase-header h2 {
+            font-size: 1.65rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .phase-header h2 span {
+            color: var(--primary);
+        }
+
+        .phase-header p {
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+            font-size: 0.95rem;
+        }
+
+        /* Subheadings */
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 2rem 0 0.75rem;
+            color: var(--text);
+        }
+
+        h4 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.5rem;
+            color: var(--text);
+        }
+
+        p { margin-bottom: 1rem; }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--code-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 1.25rem 0;
+        }
+
+        .code-header {
+            background: rgba(255,255,255,0.05);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .code-header span {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .copy-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #94a3b8;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+        .code-block pre {
+            padding: 1.25rem;
+            overflow-x: auto;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--code-text);
+        }
+
+        .code-block code { font-family: inherit; }
+
+        code:not(.code-block code) {
+            background: var(--primary-glow);
+            color: var(--primary-dark);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.88em;
+        }
+
+        /* Alert boxes */
+        .safety-box, .tip-box, .milestone-box, .concept-box {
+            border-radius: 8px;
+            padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+        }
+
+        .safety-box {
+            background: var(--safety-bg);
+            border-color: var(--safety-border);
+        }
+
+        .safety-box .box-title { color: var(--safety-text); }
+        .safety-box p { color: var(--safety-text); }
+
+        .tip-box {
+            background: var(--tip-bg);
+            border-color: var(--tip-border);
+        }
+
+        .tip-box .box-title { color: var(--tip-text); }
+        .tip-box p { color: var(--tip-text); margin-bottom: 0.5rem; }
+        .tip-box p:last-child { margin-bottom: 0; }
+
+        .milestone-box {
+            background: var(--milestone-bg);
+            border-color: var(--milestone-border);
+        }
+
+        .milestone-box .box-title { color: var(--milestone-text); }
+        .milestone-box p { color: var(--milestone-text); margin-bottom: 0; }
+
+        .concept-box {
+            background: #faf5ff;
+            border-color: #a855f7;
+        }
+
+        .concept-box .box-title { color: #6b21a8; }
+        .concept-box p { color: #581c87; margin-bottom: 0.5rem; }
+        .concept-box p:last-child { margin-bottom: 0; }
+
+        .box-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* Tables */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.65rem 1rem;
+            border-top: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        tr:hover td { background: var(--bg); }
+
+        /* Accordions */
+        .accordion {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+
+        .accordion-trigger {
+            width: 100%;
+            background: var(--bg-card);
+            border: none;
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text);
+            transition: background 0.2s;
+        }
+
+        .accordion-trigger:hover { background: var(--bg); }
+
+        .accordion-trigger .arrow {
+            transition: transform 0.3s;
+            color: var(--text-muted);
+        }
+
+        .accordion-trigger.open .arrow { transform: rotate(180deg); }
+
+        .accordion-content {
+            display: none;
+            padding: 0 1.25rem 1.25rem;
+            background: var(--bg-card);
+        }
+
+        .accordion-content.open { display: block; }
+
+        /* ASCII diagram */
+        .ascii-diagram {
+            background: var(--code-bg);
+            color: #67e8f9;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre;
+            margin: 1.25rem 0;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 0.75rem 0 1rem 1.5rem;
+        }
+
+        li { margin-bottom: 0.35rem; }
+
+        /* Footer */
+        .footer {
+            margin-left: var(--sidebar-width);
+            padding: 2rem 3rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer a:hover { text-decoration: underline; }
+
+        /* Overlay for mobile sidebar */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 85;
+        }
+
+        .sidebar-overlay.active { display: block; }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main { margin-left: 0; padding: 2rem 1.5rem 3rem; }
+            .footer { margin-left: 0; padding: 2rem 1.5rem; }
+            .hamburger { display: block; }
+            .hero h1 { font-size: 1.8rem; }
+        }
+
+        @media (max-width: 600px) {
+            .main { padding: 1.5rem 1rem 3rem; }
+            .hero h1 { font-size: 1.5rem; }
+            .hero-demo { font-size: 0.78rem; padding: 1.25rem; }
+            .code-block pre { font-size: 0.78rem; padding: 1rem; }
+        }
+
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+
+        /* Scrollbar */
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        /* Link styling */
+        a { color: var(--primary); }
+        a:hover { color: var(--primary-dark); }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+    <button class="hamburger" id="hamburger" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="header-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7 11.5V14m0-2.5v-3a1.5 1.5 0 113 0m-3 3a1.5 1.5 0 00-3 0v2a6 6 0 0012 0v-1.5m-6-7.5v-2a1.5 1.5 0 013 0v2m0 0v3m0-3a1.5 1.5 0 013 0v3"/>
+        </svg>
+        Gesture Control Build Guide
+    </div>
+</header>
+
+<!-- Sidebar overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+    <div class="progress-bar-container">
+        <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-label" id="progressLabel">0% complete</div>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Getting Started</div>
+        <label class="sidebar-link" data-target="hero">
+            <input type="checkbox" data-step="intro"> Introduction
+        </label>
+        <label class="sidebar-link" data-target="requirements">
+            <input type="checkbox" data-step="requirements"> What You'll Need
+        </label>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Phase 1 &mdash; Webcam</div>
+        <label class="sidebar-link" data-target="p1-install">
+            <input type="checkbox" data-step="p1-install"> Install Packages
+        </label>
+        <label class="sidebar-link" data-target="p1-capture">
+            <input type="checkbox" data-step="p1-capture"> Capture Video
+        </label>
+        <label class="sidebar-link" data-target="p1-manipulate">
+            <input type="checkbox" data-step="p1-manipulate"> Manipulate Frames
+        </label>
+        <label class="sidebar-link" data-target="p1-draw">
+            <input type="checkbox" data-step="p1-draw"> Draw on Frames
+        </label>
+        <label class="sidebar-link" data-target="p1-coordinates">
+            <input type="checkbox" data-step="p1-coordinates"> Coordinate System
+        </label>
+        <label class="sidebar-link" data-target="p1-mini">
+            <input type="checkbox" data-step="p1-mini"> Mini Project
+        </label>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Phase 2 &mdash; Hand Tracking</div>
+        <label class="sidebar-link" data-target="p2-mediapipe">
+            <input type="checkbox" data-step="p2-mediapipe"> MediaPipe Setup
+        </label>
+        <label class="sidebar-link" data-target="p2-landmarks">
+            <input type="checkbox" data-step="p2-landmarks"> The 21 Landmarks
+        </label>
+        <label class="sidebar-link" data-target="p2-gestures">
+            <input type="checkbox" data-step="p2-gestures"> Detect Gestures
+        </label>
+        <label class="sidebar-link" data-target="p2-smoothing">
+            <input type="checkbox" data-step="p2-smoothing"> Smooth Movement
+        </label>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Phase 3 &mdash; Mouse Control</div>
+        <label class="sidebar-link" data-target="p3-pyautogui">
+            <input type="checkbox" data-step="p3-pyautogui"> PyAutoGUI Basics
+        </label>
+        <label class="sidebar-link" data-target="p3-mapping">
+            <input type="checkbox" data-step="p3-mapping"> Coordinate Mapping
+        </label>
+        <label class="sidebar-link" data-target="p3-statemachine">
+            <input type="checkbox" data-step="p3-statemachine"> Gesture State Machine
+        </label>
+        <label class="sidebar-link" data-target="p3-settings">
+            <input type="checkbox" data-step="p3-settings"> Configurable Settings
+        </label>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Phase 4 &mdash; Polish</div>
+        <label class="sidebar-link" data-target="p4-combine">
+            <input type="checkbox" data-step="p4-combine"> Combine Everything
+        </label>
+        <label class="sidebar-link" data-target="p4-debug">
+            <input type="checkbox" data-step="p4-debug"> Debug Overlay
+        </label>
+        <label class="sidebar-link" data-target="p4-extensions">
+            <input type="checkbox" data-step="p4-extensions"> Extensions
+        </label>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Reference</div>
+        <label class="sidebar-link" data-target="troubleshooting">
+            <input type="checkbox" data-step="troubleshooting"> Troubleshooting
+        </label>
+        <label class="sidebar-link" data-target="resources">
+            <input type="checkbox" data-step="resources"> Resources
+        </label>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+
+    <!-- Hero Section -->
+    <section id="hero" class="hero">
+        <h1>Build Your Own<br><span>Gesture-Controlled Mouse</span></h1>
+        <p>Wave your hand in front of a webcam and watch your mouse cursor follow. Pinch to click. Open your hand to scroll. You're going to build this from scratch.</p>
+        <div class="hero-demo">
+            <span class="comment"># What you'll build:</span><br>
+            <span class="keyword">while</span> webcam_is_running:<br>
+            &nbsp;&nbsp;hand = <span class="func">track_hand</span>(frame)<br>
+            &nbsp;&nbsp;gesture = <span class="func">detect_gesture</span>(hand)<br>
+            &nbsp;&nbsp;<span class="keyword">if</span> gesture == <span class="string">"move"</span>:<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="func">move_mouse</span>(hand.position)<br>
+            &nbsp;&nbsp;<span class="keyword">elif</span> gesture == <span class="string">"pinch"</span>:<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="func">click</span>()
+        </div>
+    </section>
+
+    <!-- What You'll Need -->
+    <section id="requirements">
+        <div class="requirements-box">
+            <h3>What You'll Need</h3>
+            <ul>
+                <li><strong>A laptop or desktop with a webcam</strong> (built-in or USB &mdash; most laptops have one)</li>
+                <li><strong>Python 3.8 or higher</strong> installed (<a href="https://www.python.org/downloads/" target="_blank">python.org/downloads</a>)</li>
+                <li><strong>A text editor or IDE</strong> &mdash; VS Code, PyCharm, or even IDLE works</li>
+                <li><strong>About 500 MB of disk space</strong> for the libraries</li>
+                <li><strong>Patience and curiosity</strong> &mdash; if something breaks, that's normal. You'll learn the most from debugging.</li>
+            </ul>
+        </div>
+
+        <p>Everything we use in this guide is <strong>free and open-source</strong>. You'll install three main Python libraries:</p>
+        <ul>
+            <li><strong>OpenCV</strong> &mdash; captures and processes video from your webcam</li>
+            <li><strong>MediaPipe</strong> &mdash; Google's machine learning library that detects your hand and its 21 landmarks in real time</li>
+            <li><strong>PyAutoGUI</strong> &mdash; lets Python move your mouse cursor and simulate clicks</li>
+        </ul>
+
+        <p>By the end of this guide, you'll have a working gesture-controlled mouse that you built yourself. Let's get started.</p>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PHASE 1: GET YOUR WEBCAM WORKING -->
+    <!-- ============================================================ -->
+
+    <section id="p1-install">
+        <div class="phase-header">
+            <h2><span>Phase 1:</span> Get Your Webcam Working</h2>
+            <p>Before you can track hands, you need to see through the webcam's eyes.</p>
+        </div>
+
+        <h3>Installing Packages</h3>
+
+        <p>Open your terminal (or Command Prompt on Windows) and run:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>terminal</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>pip install opencv-python mediapipe pyautogui numpy</code></pre>
+        </div>
+
+        <p>If you get a "permission denied" error, try <code>pip install --user ...</code> or use a virtual environment (recommended for keeping your project tidy).</p>
+
+        <p>Here's a quick script to verify everything installed correctly. Save it as <code>check_packages.py</code> and run it:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>check_packages.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>"""Package verification script.
+Run this first to make sure everything is installed."""
+
+packages = {
+    "cv2": "opencv-python",
+    "mediapipe": "mediapipe",
+    "pyautogui": "pyautogui",
+    "numpy": "numpy",
+}
+
+all_good = True
+for import_name, pip_name in packages.items():
+    try:
+        module = __import__(import_name)
+        version = getattr(module, "__version__", "unknown")
+        print(f"  [OK] {pip_name} ({version})")
+    except ImportError:
+        print(f"  [MISSING] {pip_name} -- run: pip install {pip_name}")
+        all_good = False
+
+if all_good:
+    print("\nAll packages installed. You're ready to go!")
+else:
+    print("\nSome packages are missing. Install them and run this again.")</code></pre>
+        </div>
+    </section>
+
+    <!-- Capture Video -->
+    <section id="p1-capture">
+        <h3>Capturing Video from Your Webcam</h3>
+
+        <p>OpenCV makes it surprisingly easy to open your webcam and start reading video frames. A "frame" is just a single image &mdash; video is really a rapid sequence of images (typically 30 per second). Here's the basic pattern you'll use throughout this entire project:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>basic_webcam.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import cv2
+
+# Open the default webcam (index 0)
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Could not open webcam!")
+    exit()
+
+print("Webcam opened! Press 'q' to quit.")
+
+while True:
+    ret, frame = cap.read()
+
+    if not ret:
+        print("Error: Can't receive frame.")
+        break
+
+    # Show the frame in a window
+    cv2.imshow("Webcam Feed", frame)
+
+    # Wait 1ms for a key press; quit on 'q'
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Always clean up
+cap.release()
+cv2.destroyAllWindows()</code></pre>
+        </div>
+
+        <p>Run this, and you should see a live video feed from your webcam. If you see yourself on screen, congratulations &mdash; you've taken the first step. Press <code>q</code> to close the window.</p>
+
+        <div class="concept-box">
+            <div class="box-title">How cv2.VideoCapture Works</div>
+            <p><code>VideoCapture(0)</code> opens your default camera. If you have multiple cameras, try <code>1</code>, <code>2</code>, etc. The <code>cap.read()</code> call returns two things: <code>ret</code> (a boolean &mdash; did the read succeed?) and <code>frame</code> (the actual image as a NumPy array). Each frame is a 3D array with shape <code>(height, width, 3)</code> where the 3 represents Blue, Green, and Red color channels (yes, BGR, not RGB &mdash; OpenCV is quirky like that).</p>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Webcam Not Working? Debugging Checklist
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Problem</th><th>Likely Cause</th><th>Fix</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Black/blank window</td>
+                                <td>Camera permissions denied</td>
+                                <td>Check system settings &rarr; Privacy &rarr; Camera. Make sure your terminal/IDE has access.</td>
+                            </tr>
+                            <tr>
+                                <td>"Could not open webcam"</td>
+                                <td>Wrong camera index or camera in use by another app</td>
+                                <td>Try index 1 instead of 0. Close Zoom, FaceTime, etc.</td>
+                            </tr>
+                            <tr>
+                                <td>Very laggy feed</td>
+                                <td>High resolution or slow USB</td>
+                                <td>Add <code>cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)</code> and <code>cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)</code></td>
+                            </tr>
+                            <tr>
+                                <td>Window appears then crashes</td>
+                                <td>Missing <code>cv2.waitKey()</code></td>
+                                <td>Ensure <code>cv2.waitKey(1)</code> is inside your loop &mdash; OpenCV needs it to process window events.</td>
+                            </tr>
+                            <tr>
+                                <td>Image is mirrored</td>
+                                <td>Default camera behavior</td>
+                                <td>Not a bug &mdash; we'll fix this with <code>cv2.flip()</code> in the next section.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Manipulate Frames -->
+    <section id="p1-manipulate">
+        <h3>Manipulating Frames</h3>
+
+        <p>Before we get to hand tracking, let's learn to manipulate video frames. These techniques are tools you'll use throughout the project. Every frame is just a NumPy array, so you can slice, transform, and modify it like any array.</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>frame_manipulation.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import cv2
+
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    # FLIP: Mirror the image so it feels natural (like a mirror)
+    # flipCode: 0 = vertical, 1 = horizontal, -1 = both
+    flipped = cv2.flip(frame, 1)
+
+    # RESIZE: Make the frame smaller (faster processing)
+    # You can use exact dimensions or a scale factor
+    small = cv2.resize(flipped, (320, 240))
+
+    # Or resize by percentage:
+    # half = cv2.resize(flipped, None, fx=0.5, fy=0.5)
+
+    # COLOR CONVERT: Convert BGR to RGB (needed for MediaPipe later)
+    rgb = cv2.cvtColor(flipped, cv2.COLOR_BGR2RGB)
+
+    # CROP: Grab just a region of the frame
+    # Syntax: frame[y_start:y_end, x_start:x_end]
+    h, w = flipped.shape[:2]
+    cropped = flipped[0:h//2, 0:w//2]  # Top-left quarter
+
+    # GRAYSCALE: Sometimes useful for image processing
+    gray = cv2.cvtColor(flipped, cv2.COLOR_BGR2GRAY)
+
+    # Show different versions
+    cv2.imshow("Flipped (Mirror)", flipped)
+    cv2.imshow("Small", small)
+    cv2.imshow("Cropped", cropped)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()</code></pre>
+        </div>
+
+        <p>The most important one for our project is <code>cv2.flip(frame, 1)</code>. Without the horizontal flip, when you move your right hand to the right, the cursor moves <em>left</em> on screen. Flipping makes the webcam act like a mirror, which is much more intuitive for gesture control.</p>
+    </section>
+
+    <!-- Drawing on Frames -->
+    <section id="p1-draw">
+        <h3>Drawing on Frames</h3>
+
+        <p>You can draw shapes, text, and lines directly onto frames. This is how we'll build a debug overlay later &mdash; showing landmark positions, gesture status, and FPS right on the video feed.</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>drawing_demo.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import cv2
+import time
+
+cap = cv2.VideoCapture(0)
+prev_time = time.time()
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    frame = cv2.flip(frame, 1)
+    h, w = frame.shape[:2]
+
+    # --- Drawing primitives ---
+
+    # Line: from point A to point B
+    cv2.line(frame, (50, 50), (200, 50), (0, 255, 0), 2)
+
+    # Rectangle: top-left corner to bottom-right corner
+    cv2.rectangle(frame, (50, 80), (200, 160), (255, 0, 0), 2)
+
+    # Filled rectangle (use -1 for thickness)
+    cv2.rectangle(frame, (50, 180), (200, 220), (255, 0, 0), -1)
+
+    # Circle: center point, radius
+    cv2.circle(frame, (300, 120), 40, (0, 0, 255), 2)
+
+    # Filled circle
+    cv2.circle(frame, (300, 220), 20, (0, 255, 255), -1)
+
+    # --- Text (great for HUD/debug info) ---
+
+    # Calculate FPS
+    curr_time = time.time()
+    fps = 1 / (curr_time - prev_time) if (curr_time - prev_time) > 0 else 0
+    prev_time = curr_time
+
+    # FPS counter in top-right corner
+    fps_text = f"FPS: {fps:.0f}"
+    cv2.putText(frame, fps_text, (w - 150, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+    # Status text with background for readability
+    status = "IDLE"
+    text_size = cv2.getTextSize(status, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)[0]
+    cv2.rectangle(frame, (10, h - 50),
+                  (10 + text_size[0] + 10, h - 50 + text_size[1] + 10),
+                  (0, 0, 0), -1)
+    cv2.putText(frame, status, (15, h - 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+    cv2.imshow("Drawing Demo", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()</code></pre>
+        </div>
+
+        <p>Notice the FPS counter &mdash; you'll want this in your final project to make sure the tracking is running fast enough. Anything above 20 FPS should feel responsive. Below 15, and you'll start to notice lag.</p>
+    </section>
+
+    <!-- Coordinate System -->
+    <section id="p1-coordinates">
+        <h3>Understanding the Coordinate System</h3>
+
+        <p>This is one of those things that trips people up if you don't learn it now. In OpenCV's coordinate system, <strong>the origin (0, 0) is the top-left corner</strong> of the image. The x-axis goes right and the y-axis goes <em>down</em>. This is the opposite of math class, where y usually goes up.</p>
+
+        <div class="ascii-diagram">   (0,0) ---------> x (width)
+   |
+   |    Your webcam frame
+   |    (a 2D array of pixels)
+   |
+   v
+   y (height)
+
+   So a 640x480 frame goes from:
+     Top-left:     (0, 0)
+     Top-right:    (639, 0)
+     Bottom-left:  (0, 479)
+     Bottom-right: (639, 479)</div>
+
+        <p>When we get to hand tracking, MediaPipe will give us <strong>normalized coordinates</strong> (values between 0.0 and 1.0). To convert to pixel coordinates, you multiply: <code>pixel_x = normalized_x * frame_width</code>. Keep this in mind &mdash; we'll come back to it.</p>
+
+        <div class="tip-box">
+            <div class="box-title">Check Your Understanding</div>
+            <p>If your webcam frame is 640x480 and MediaPipe reports a landmark at normalized position (0.5, 0.25), what are the pixel coordinates? Answer: (320, 120) &mdash; the center horizontally, a quarter of the way down from the top.</p>
+        </div>
+    </section>
+
+    <!-- Mini Project: Color Detective -->
+    <section id="p1-mini">
+        <h3>Mini Project: Color Detective</h3>
+
+        <p>Before moving on to Phase 2, let's build a quick mini project that combines everything from this phase. This "Color Detective" reads the color of whatever pixel is at the center of your webcam frame.</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>color_detective.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import cv2
+
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    frame = cv2.flip(frame, 1)
+    h, w = frame.shape[:2]
+
+    # Get center pixel
+    cx, cy = w // 2, h // 2
+    b, g, r = frame[cy, cx]  # Remember: OpenCV uses BGR
+
+    # Draw a crosshair at center
+    cv2.line(frame, (cx - 20, cy), (cx + 20, cy), (255, 255, 255), 1)
+    cv2.line(frame, (cx, cy - 20), (cx, cy + 20), (255, 255, 255), 1)
+
+    # Show color info with a swatch
+    color_text = f"BGR: ({b}, {g}, {r})"
+    cv2.rectangle(frame, (10, 10), (250, 80), (0, 0, 0), -1)
+    cv2.rectangle(frame, (15, 15), (55, 55), (int(b), int(g), int(r)), -1)
+    cv2.rectangle(frame, (15, 15), (55, 55), (255, 255, 255), 1)
+    cv2.putText(frame, color_text, (65, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+
+    # Simple color name detection
+    if r > 150 and g < 100 and b < 100:
+        name = "Red"
+    elif g > 150 and r < 100 and b < 100:
+        name = "Green"
+    elif b > 150 and r < 100 and g < 100:
+        name = "Blue"
+    elif r > 200 and g > 200 and b > 200:
+        name = "White"
+    elif r < 50 and g < 50 and b < 50:
+        name = "Black"
+    else:
+        name = "Mixed"
+
+    cv2.putText(frame, name, (65, 65),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+
+    cv2.imshow("Color Detective", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()</code></pre>
+        </div>
+
+        <div class="milestone-box">
+            <div class="box-title">Phase 1 Milestone</div>
+            <p>You can open your webcam, capture and display video, manipulate frames, draw overlays, and understand the coordinate system. You've got the foundation &mdash; now let's make it see your hand.</p>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PHASE 2: TRACK YOUR HANDS -->
+    <!-- ============================================================ -->
+
+    <section id="p2-mediapipe">
+        <div class="phase-header">
+            <h2><span>Phase 2:</span> Track Your Hands</h2>
+            <p>This is where it starts to feel like magic. You'll use Google's MediaPipe library to detect and track your hand in real time.</p>
+        </div>
+
+        <h3>Setting Up MediaPipe Hand Tracking</h3>
+
+        <p>MediaPipe Hands uses a machine learning model that runs entirely on your CPU &mdash; no GPU required. It detects up to two hands and outputs 21 3D landmarks for each one. Here's how to set it up:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>hand_tracking_setup.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import cv2
+import mediapipe as mp
+
+# MediaPipe setup
+mp_hands = mp.solutions.hands
+mp_draw = mp.solutions.drawing_utils
+
+# Initialize the hand tracker
+hands = mp_hands.Hands(
+    static_image_mode=False,   # Video mode (faster, uses tracking)
+    max_num_hands=1,           # We only need one hand for mouse control
+    min_detection_confidence=0.7,  # How sure it must be to detect a hand
+    min_tracking_confidence=0.5,   # How sure it must be to keep tracking
+)
+
+cap = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    frame = cv2.flip(frame, 1)
+
+    # IMPORTANT: MediaPipe needs RGB, OpenCV uses BGR
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    # Process the frame
+    results = hands.process(rgb)
+
+    # Draw landmarks if a hand is detected
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_draw.draw_landmarks(
+                frame,
+                hand_landmarks,
+                mp_hands.HAND_CONNECTIONS
+            )
+
+    cv2.imshow("Hand Tracking", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+hands.close()</code></pre>
+        </div>
+
+        <p>Run this and hold your hand up in front of the webcam. You should see colored dots and lines drawn over your hand. Once you see your hand tracked on screen, it feels like magic &mdash; and it's only going to get cooler from here.</p>
+
+        <div class="concept-box">
+            <div class="box-title">Detection Confidence Explained</div>
+            <p><code>min_detection_confidence</code> is how sure the model needs to be to detect a new hand (0.0 to 1.0). Higher = fewer false positives but might miss your hand sometimes. <code>min_tracking_confidence</code> is how sure it must be to keep tracking a hand it already found. When tracking fails, it falls back to detection, which is slower. Start with 0.7/0.5 and tweak from there.</p>
+        </div>
+
+        <div class="safety-box">
+            <div class="box-title">Privacy Note</div>
+            <p>MediaPipe processes everything locally on your machine. No video data is sent to the internet. However, your webcam is active while the program runs. Be aware of your surroundings and close the program when you're done. Consider adding a clear "RECORDING" indicator in your final build.</p>
+        </div>
+    </section>
+
+    <!-- The 21 Landmarks -->
+    <section id="p2-landmarks">
+        <h3>The 21 Landmarks</h3>
+
+        <p>MediaPipe identifies 21 specific points on your hand. Understanding which landmark is which is essential for detecting gestures. Here's the map:</p>
+
+        <div class="ascii-diagram">        MIDDLE (12)
+          RING (16) |  INDEX (8)
+            |       |  |
+       PINKY (20)   | |  THUMB (4)
+         |    \     | |   /
+        (19)  (15) (11)(7) (3)
+         |     |    |  |    |
+        (18)  (14) (10)(6) (2)
+         |     |    |  |    |
+        (17)  (13)  (9)(5) (1)
+          \     \   |  /   /
+           \     \  | /   /
+            ------(0)-----     &lt;-- WRIST
+
+    Fingertip IDs:  4 (thumb), 8 (index), 12 (middle),
+                   16 (ring), 20 (pinky)
+
+    MCP joints (knuckles): 1, 5, 9, 13, 17
+    PIP joints (middle):   2, 6, 10, 14, 18
+    DIP joints (upper):    3, 7, 11, 15, 19</div>
+
+        <p>Each landmark has three values: <code>x</code> (horizontal position, 0.0 to 1.0), <code>y</code> (vertical position, 0.0 to 1.0), and <code>z</code> (depth &mdash; how close to the camera, relative to the wrist). For mouse control, we mostly use the <strong>index fingertip (landmark 8)</strong> for cursor position and the <strong>thumb tip (landmark 4)</strong> for detecting pinch gestures.</p>
+
+        <p>Here's how to read the coordinates:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>reading_landmarks.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code># Inside your main loop, after results = hands.process(rgb):
+if results.multi_hand_landmarks:
+    hand = results.multi_hand_landmarks[0]  # First detected hand
+    h, w, _ = frame.shape
+
+    # Get index fingertip position
+    index_tip = hand.landmark[8]
+    ix, iy = int(index_tip.x * w), int(index_tip.y * h)
+    print(f"Index fingertip: pixel ({ix}, {iy})")
+
+    # Get thumb tip position
+    thumb_tip = hand.landmark[4]
+    tx, ty = int(thumb_tip.x * w), int(thumb_tip.y * h)
+
+    # Draw circles on the fingertips
+    cv2.circle(frame, (ix, iy), 10, (0, 255, 0), -1)  # Green
+    cv2.circle(frame, (tx, ty), 10, (0, 0, 255), -1)   # Red
+
+    # Draw line between thumb and index (for pinch visualization)
+    cv2.line(frame, (tx, ty), (ix, iy), (255, 255, 0), 2)</code></pre>
+        </div>
+    </section>
+
+    <!-- Detecting Gestures -->
+    <section id="p2-gestures">
+        <h3>Detecting Gestures</h3>
+
+        <p>Now for the fun part. We're going to teach the computer to recognize what your hand is doing. Every gesture boils down to measuring distances and angles between landmarks. Let's start with the most useful gesture for mouse control: the <strong>pinch</strong>.</p>
+
+        <h4>Measuring Distances Between Landmarks</h4>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>distance_helper.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import math
+
+def pixel_distance(p1, p2):
+    """Calculate distance between two (x, y) points in pixels."""
+    return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)</code></pre>
+        </div>
+
+        <h4>Pinch Detection</h4>
+
+        <p>A pinch is when your thumb tip and index fingertip come close together. We measure the distance between them and compare it to a threshold:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>gestures.py &mdash; pinch detection</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>def is_pinching(hand_landmarks, frame_shape, threshold=40):
+    """Detect a pinch gesture (thumb tip close to index fingertip).
+
+    Args:
+        hand_landmarks: MediaPipe hand landmarks object.
+        frame_shape: (height, width, channels) of the current frame.
+        threshold: Max pixel distance to count as a pinch.
+
+    Returns:
+        Tuple of (is_pinching: bool, distance: float).
+    """
+    h, w = frame_shape[:2]
+
+    thumb_tip = hand_landmarks.landmark[4]
+    index_tip = hand_landmarks.landmark[8]
+
+    # Convert normalized coords to pixels
+    tx, ty = int(thumb_tip.x * w), int(thumb_tip.y * h)
+    ix, iy = int(index_tip.x * w), int(index_tip.y * h)
+
+    dist = pixel_distance((tx, ty), (ix, iy))
+    return dist < threshold, dist</code></pre>
+        </div>
+
+        <h4>Finger Extension Detection</h4>
+
+        <p>To detect if a finger is extended (straight out) or curled, we compare the fingertip's position to its lower joints. If the tip is farther from the wrist than the PIP joint, the finger is probably extended:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>gestures.py &mdash; finger extension</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>def is_finger_extended(hand_landmarks, finger_tip_id, finger_pip_id):
+    """Check if a finger is extended (tip is above PIP joint).
+
+    For fingers 8, 12, 16, 20: compare tip.y to pip.y
+    (lower y value = higher on screen = extended).
+    The thumb (4) needs special handling -- we compare x instead.
+
+    Args:
+        hand_landmarks: MediaPipe hand landmarks.
+        finger_tip_id: Landmark index of fingertip (4, 8, 12, 16, or 20).
+        finger_pip_id: Landmark index of PIP joint (3, 6, 10, 14, or 18).
+
+    Returns:
+        True if the finger appears extended.
+    """
+    tip = hand_landmarks.landmark[finger_tip_id]
+    pip_joint = hand_landmarks.landmark[finger_pip_id]
+
+    if finger_tip_id == 4:  # Thumb uses x-axis
+        # This works for right hand; for left hand you'd flip the comparison
+        return tip.x < pip_joint.x
+    else:
+        return tip.y < pip_joint.y
+
+
+def count_extended_fingers(hand_landmarks):
+    """Count how many fingers are extended.
+
+    Returns:
+        Integer from 0 to 5.
+    """
+    finger_tips = [4, 8, 12, 16, 20]
+    finger_pips = [3, 6, 10, 14, 18]
+
+    count = 0
+    for tip_id, pip_id in zip(finger_tips, finger_pips):
+        if is_finger_extended(hand_landmarks, tip_id, pip_id):
+            count += 1
+    return count</code></pre>
+        </div>
+
+        <h4>Common Gesture Patterns</h4>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>gestures.py &mdash; gesture patterns</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>def is_open_hand(hand_landmarks):
+    """Detect open hand (all five fingers extended).
+    Useful for 'stop' or 'scroll mode' gestures."""
+    return count_extended_fingers(hand_landmarks) == 5
+
+
+def is_pointing(hand_landmarks):
+    """Detect pointing gesture (only index finger extended).
+    Useful for 'move cursor' mode."""
+    tips = [4, 8, 12, 16, 20]
+    pips = [3, 6, 10, 14, 18]
+
+    states = []
+    for tip_id, pip_id in zip(tips, pips):
+        states.append(is_finger_extended(hand_landmarks, tip_id, pip_id))
+
+    # Index extended, others curled (thumb can be either)
+    return states[1] and not states[2] and not states[3] and not states[4]</code></pre>
+        </div>
+
+        <p>With these building blocks, you can detect quite a few gestures. The <strong>pointing</strong> gesture (index finger up, others curled) will be your "move cursor" gesture. The <strong>pinch</strong> will be "click." The <strong>open hand</strong> could mean "scroll" or "stop." Feel free to invent your own combinations &mdash; that's Phase 4.</p>
+    </section>
+
+    <!-- Smoothing -->
+    <section id="p2-smoothing">
+        <h3>Smoothing Movement with EMA</h3>
+
+        <p>If you've tried moving the cursor based on raw hand positions, you've probably noticed it's jittery. Your hand naturally trembles a little, and that gets amplified on a big monitor. The fix is <strong>smoothing</strong> &mdash; specifically, Exponential Moving Average (EMA).</p>
+
+        <div class="concept-box">
+            <div class="box-title">What is EMA?</div>
+            <p>EMA is a way to average values over time, giving more weight to recent values. The formula is: <code>smoothed = alpha * new_value + (1 - alpha) * previous_smoothed</code>. The <code>alpha</code> parameter (0.0 to 1.0) controls responsiveness. Low alpha (like 0.2) = very smooth but laggy. High alpha (like 0.8) = responsive but jittery. Start with 0.4 and adjust to taste.</p>
+        </div>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>smoother.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>class Smoother:
+    """Exponential Moving Average (EMA) smoother for reducing jitter.
+
+    Usage:
+        smooth_x = Smoother(alpha=0.4)
+        smooth_y = Smoother(alpha=0.4)
+        # In your loop:
+        sx = smooth_x.update(raw_x)
+        sy = smooth_y.update(raw_y)
+    """
+
+    def __init__(self, alpha=0.4):
+        """
+        Args:
+            alpha: Smoothing factor (0.0 to 1.0).
+                   Lower = smoother but laggier.
+                   Higher = more responsive but jittery.
+        """
+        self.alpha = alpha
+        self.value = None
+
+    def update(self, new_value):
+        """Feed in a new raw value, get back a smoothed value."""
+        if self.value is None:
+            self.value = new_value
+        else:
+            self.value = self.alpha * new_value + (1 - self.alpha) * self.value
+        return self.value
+
+    def reset(self):
+        """Reset the smoother (e.g., when hand tracking is lost)."""
+        self.value = None</code></pre>
+        </div>
+
+        <p>You'll create separate smoothers for the x and y coordinates. When tracking is lost (hand leaves the frame), call <code>reset()</code> so the cursor doesn't jump when the hand comes back.</p>
+
+        <div class="milestone-box">
+            <div class="box-title">Phase 2 Milestone</div>
+            <p>You can track your hand in real time, identify all 21 landmarks, detect pinch/point/open-hand gestures, and smooth out jittery movement. Your hand is now a recognized input device &mdash; next, we connect it to the mouse.</p>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PHASE 3: CONTROL THE MOUSE -->
+    <!-- ============================================================ -->
+
+    <section id="p3-pyautogui">
+        <div class="phase-header">
+            <h2><span>Phase 3:</span> Control the Mouse</h2>
+            <p>Now we connect your hand gestures to actual mouse input. This is where it all comes together.</p>
+        </div>
+
+        <h3>PyAutoGUI Basics</h3>
+
+        <p>PyAutoGUI lets Python take control of your mouse and keyboard. It can move the cursor, click, scroll, and type. For our project, we only need cursor movement and clicks.</p>
+
+        <div class="safety-box">
+            <div class="box-title">Important: PyAutoGUI Fail-Safe</div>
+            <p>PyAutoGUI has a built-in safety feature: if you slam your mouse into any corner of the screen, it raises a <code>pyautogui.FailSafeException</code> and stops the program. <strong>Never disable this.</strong> When your code is controlling the cursor, this is your emergency stop. If something goes wrong and the cursor is going haywire, just shove your physical mouse to any corner.</p>
+        </div>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>pyautogui_basics.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import pyautogui
+import time
+
+# SAFETY: Keep this enabled! (It's on by default)
+pyautogui.FAILSAFE = True
+
+# Disable the default 0.1s pause between actions (we need speed)
+pyautogui.PAUSE = 0
+
+# Get screen dimensions
+screen_w, screen_h = pyautogui.size()
+print(f"Screen size: {screen_w} x {screen_h}")
+
+# Move the mouse to an absolute position
+pyautogui.moveTo(screen_w // 2, screen_h // 2)
+time.sleep(1)
+
+# Move relative to current position
+pyautogui.move(100, 0)   # Move right 100 pixels
+time.sleep(0.5)
+
+# Click at current position
+pyautogui.click()
+
+# Scroll (positive = up, negative = down)
+pyautogui.scroll(3)   # Scroll up 3 "clicks"
+time.sleep(0.5)
+pyautogui.scroll(-3)  # Scroll down 3 "clicks"
+
+print("Done! (Move mouse to a corner to trigger fail-safe if needed)")</code></pre>
+        </div>
+
+        <div class="tip-box">
+            <div class="box-title">Check Your Understanding</div>
+            <p>Why do we set <code>pyautogui.PAUSE = 0</code>? Because the default 0.1-second pause between every PyAutoGUI call would make our real-time cursor movement feel sluggish. We need it to move the mouse as fast as our gesture tracking can process frames.</p>
+        </div>
+    </section>
+
+    <!-- Coordinate Mapping -->
+    <section id="p3-mapping">
+        <h3>Mapping Hand Position to Screen</h3>
+
+        <p>Here's the tricky part: your webcam frame is maybe 640x480 pixels, but your screen might be 1920x1080 or larger. You can't just use the hand's pixel position directly &mdash; you need to <strong>map</strong> from webcam space to screen space.</p>
+
+        <p>An even better approach is to define a <strong>control zone</strong> &mdash; a smaller area within the webcam frame that maps to the full screen. This means you don't have to wave your hand across the entire frame. Small, comfortable movements control the whole screen.</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>coordinate_mapping.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import pyautogui
+
+def map_to_screen(hand_x, hand_y, frame_w, frame_h, margin=0.15):
+    """Map a hand position in webcam space to screen coordinates.
+
+    Uses a 'control zone' defined by the margin parameter.
+    The zone is a centered rectangle within the webcam frame.
+    Positions inside the zone map to the full screen area.
+
+    Args:
+        hand_x: Hand x position in pixels (webcam space).
+        hand_y: Hand y position in pixels (webcam space).
+        frame_w: Width of webcam frame in pixels.
+        frame_h: Height of webcam frame in pixels.
+        margin: Fraction of frame to exclude on each side (0.0 to 0.4).
+
+    Returns:
+        (screen_x, screen_y) clamped to screen boundaries.
+    """
+    screen_w, screen_h = pyautogui.size()
+
+    # Define the control zone
+    x_min = frame_w * margin
+    x_max = frame_w * (1 - margin)
+    y_min = frame_h * margin
+    y_max = frame_h * (1 - margin)
+
+    # Normalize hand position within the zone (0.0 to 1.0)
+    norm_x = (hand_x - x_min) / (x_max - x_min)
+    norm_y = (hand_y - y_min) / (y_max - y_min)
+
+    # Clamp to [0.0, 1.0] so cursor stays on screen
+    norm_x = max(0.0, min(1.0, norm_x))
+    norm_y = max(0.0, min(1.0, norm_y))
+
+    # Scale to screen size
+    sx = int(norm_x * screen_w)
+    sy = int(norm_y * screen_h)
+
+    return sx, sy</code></pre>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Coordinate Mapping Troubleshooting
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Problem</th><th>Cause</th><th>Fix</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Cursor moves in opposite direction</td>
+                                <td>Frame isn't flipped</td>
+                                <td>Make sure you call <code>cv2.flip(frame, 1)</code> before processing.</td>
+                            </tr>
+                            <tr>
+                                <td>Cursor jumps around wildly</td>
+                                <td>No smoothing applied</td>
+                                <td>Use the <code>Smoother</code> class on mapped coordinates before passing to <code>pyautogui.moveTo()</code>.</td>
+                            </tr>
+                            <tr>
+                                <td>Cursor stuck on edges</td>
+                                <td>Margin too large</td>
+                                <td>Reduce the <code>margin</code> parameter (try 0.1 instead of 0.15).</td>
+                            </tr>
+                            <tr>
+                                <td>Hard to reach screen corners</td>
+                                <td>Margin too small</td>
+                                <td>Increase <code>margin</code> to 0.2. The control zone shrinks, making corners easier to reach.</td>
+                            </tr>
+                            <tr>
+                                <td>Cursor feels sluggish</td>
+                                <td>Smoothing alpha too low</td>
+                                <td>Increase EMA alpha (try 0.5 or 0.6).</td>
+                            </tr>
+                            <tr>
+                                <td>Y-axis feels inverted</td>
+                                <td>Coordinate mismatch</td>
+                                <td>Both OpenCV and screen coords have y going down, so this shouldn't happen. Check if you accidentally swapped x and y.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gesture State Machine -->
+    <section id="p3-statemachine">
+        <h3>Building a Gesture State Machine</h3>
+
+        <p>Right now, you can detect gestures frame by frame. But what happens when a gesture is detected for just one frame due to noise? You'd get accidental clicks all over the place. The solution is a <strong>state machine</strong> &mdash; a way to manage what mode the system is in and control transitions between modes.</p>
+
+        <div class="concept-box">
+            <div class="box-title">What is a State Machine?</div>
+            <p>A state machine is a system that can be in exactly one "state" at a time (like IDLE, MOVING, CLICKING) and transitions between states based on conditions. Think of it like a traffic light: it's always in one state (red, yellow, or green), and specific rules control when it changes. For gesture control, the state machine prevents chaotic behavior by enforcing orderly transitions and adding safeguards like cooldowns.</p>
+        </div>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>gesture_controller.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import time
+from enum import Enum
+
+class GestureState(Enum):
+    """The possible states of our gesture controller."""
+    IDLE = "idle"           # Hand not detected
+    MOVING = "moving"       # Index finger up, controlling cursor
+    CLICKING = "clicking"   # Pinch detected, performing click
+    SCROLLING = "scrolling" # Open hand, scroll mode
+
+
+class GestureController:
+    """Manages gesture states and transitions.
+
+    Prevents accidental clicks with hysteresis (different thresholds
+    for activating vs. deactivating) and cooldown timers.
+    """
+
+    def __init__(self):
+        self.state = GestureState.IDLE
+        self.last_click_time = 0
+        self.click_cooldown = 0.4  # Seconds between clicks
+
+        # Hysteresis thresholds for pinch detection
+        self.pinch_activate = 35    # Distance to start a pinch
+        self.pinch_deactivate = 55  # Distance to release a pinch
+        # The gap prevents rapid toggling when distance hovers near threshold
+
+    def update(self, hand_detected, is_pinch, pinch_dist,
+               is_point, is_open, hand_x, hand_y):
+        """Update the gesture state based on current detections.
+
+        Args:
+            hand_detected: Boolean, is a hand visible?
+            is_pinch: Boolean, are thumb and index close?
+            pinch_dist: Float, pixel distance between thumb and index.
+            is_point: Boolean, is the pointing gesture active?
+            is_open: Boolean, is the hand open?
+            hand_x: Float, current hand x position (screen coords).
+            hand_y: Float, current hand y position (screen coords).
+
+        Returns:
+            The current GestureState after processing.
+        """
+        if not hand_detected:
+            self.state = GestureState.IDLE
+            return self.state
+
+        current_time = time.time()
+
+        if self.state == GestureState.IDLE:
+            if is_point:
+                self.state = GestureState.MOVING
+            elif is_open:
+                self.state = GestureState.SCROLLING
+
+        elif self.state == GestureState.MOVING:
+            # Use hysteresis for pinch transitions
+            if pinch_dist < self.pinch_activate:
+                if current_time - self.last_click_time > self.click_cooldown:
+                    self.state = GestureState.CLICKING
+                    self.last_click_time = current_time
+            elif is_open:
+                self.state = GestureState.SCROLLING
+            elif not is_point:
+                self.state = GestureState.IDLE
+
+        elif self.state == GestureState.CLICKING:
+            # Use the higher threshold to deactivate (hysteresis)
+            if pinch_dist > self.pinch_deactivate:
+                if is_point:
+                    self.state = GestureState.MOVING
+                else:
+                    self.state = GestureState.IDLE
+
+        elif self.state == GestureState.SCROLLING:
+            if not is_open:
+                if is_point:
+                    self.state = GestureState.MOVING
+                else:
+                    self.state = GestureState.IDLE
+
+        return self.state</code></pre>
+        </div>
+
+        <h4>Hysteresis: Why Two Thresholds?</h4>
+
+        <p>Imagine the pinch threshold is 40 pixels. Your thumb and index are hovering around 38-42 pixels apart. Without hysteresis, the system would rapidly toggle between CLICKING and MOVING on every frame. With hysteresis, you need to go below 35 to <em>start</em> a click and above 55 to <em>end</em> it. This creates a "dead zone" that prevents flickering.</p>
+
+        <h4>Cooldowns: Preventing Double Clicks</h4>
+
+        <p>Even with hysteresis, a quick pinch-release-pinch could fire two clicks faster than you intended. The <code>click_cooldown</code> timer (0.4 seconds by default) enforces a minimum gap between click actions. Adjust this to taste &mdash; lower for fast double-clicking, higher for more deliberate interaction.</p>
+    </section>
+
+    <!-- Configurable Settings -->
+    <section id="p3-settings">
+        <h3>Making It Configurable with JSON</h3>
+
+        <p>Hard-coding values like smoothing alpha, pinch thresholds, and margins works while you're developing, but you'll want to tweak these without editing code every time. Let's save settings to a JSON file:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>settings_manager.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import json
+import os
+
+DEFAULT_SETTINGS = {
+    "smoothing_alpha": 0.4,
+    "pinch_activate": 35,
+    "pinch_deactivate": 55,
+    "click_cooldown": 0.4,
+    "margin": 0.15,
+    "min_detection_confidence": 0.7,
+    "min_tracking_confidence": 0.5,
+    "show_debug_overlay": True,
+}
+
+SETTINGS_FILE = "settings.json"
+
+
+def load_settings():
+    """Load settings from JSON file, falling back to defaults.
+
+    Returns:
+        dict of settings values.
+    """
+    settings = DEFAULT_SETTINGS.copy()
+
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                user_settings = json.load(f)
+
+            # Only apply known keys (ignore junk/old keys)
+            for key in DEFAULT_SETTINGS:
+                if key in user_settings:
+                    settings[key] = user_settings[key]
+
+            print(f"Loaded settings from {SETTINGS_FILE}")
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: Could not load {SETTINGS_FILE}: {e}")
+            print("Using default settings.")
+    else:
+        print("No settings file found. Using defaults.")
+
+    return settings
+
+
+def save_settings(settings):
+    """Save current settings to JSON file.
+
+    Args:
+        settings: dict of settings to save.
+    """
+    try:
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(settings, f, indent=2)
+        print(f"Settings saved to {SETTINGS_FILE}")
+    except IOError as e:
+        print(f"Error saving settings: {e}")</code></pre>
+        </div>
+
+        <p>Now you can tweak <code>settings.json</code> in a text editor and restart the program to see the changes. Later, you could even add keyboard shortcuts to adjust settings on the fly (like pressing <code>+</code> and <code>-</code> to adjust smoothing while the program runs).</p>
+
+        <div class="safety-box">
+            <div class="box-title">Settings File Security</div>
+            <p>If you ever extend settings to include file paths, API keys, or other sensitive data, validate inputs carefully. Never use <code>eval()</code> on settings values, and sanitize file paths to prevent directory traversal. For this project, our simple numeric/boolean settings are safe, but it's a good habit to build secure defaults from the start.</p>
+        </div>
+
+        <div class="milestone-box">
+            <div class="box-title">Phase 3 Milestone</div>
+            <p>You can move the cursor with your hand, click with a pinch, and the system handles noisy input gracefully with smoothing, hysteresis, and cooldowns. Your settings are configurable via JSON. You have a gesture-controlled mouse!</p>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PHASE 4: MAKE IT YOUR OWN -->
+    <!-- ============================================================ -->
+
+    <section id="p4-combine">
+        <div class="phase-header">
+            <h2><span>Phase 4:</span> Make It Your Own</h2>
+            <p>You have all the pieces. Now let's put them together into a polished, complete application.</p>
+        </div>
+
+        <h3>Combining Everything: The Main Loop</h3>
+
+        <p>Here's the skeleton that ties all the phases together. This is the structure of your final program:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>gesture_mouse.py &mdash; main loop skeleton</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>"""
+Gesture-Controlled Mouse
+Built following the Mantum Tech build guide.
+"""
+
+import cv2
+import mediapipe as mp
+import pyautogui
+import time
+
+# Import our modules (or paste the classes above into this file)
+# from smoother import Smoother
+# from gestures import is_pinching, is_pointing, is_open_hand
+# from gesture_controller import GestureController, GestureState
+# from coordinate_mapping import map_to_screen
+# from settings_manager import load_settings
+
+def main():
+    # --- Setup ---
+    settings = load_settings()
+
+    pyautogui.FAILSAFE = True
+    pyautogui.PAUSE = 0
+
+    mp_hands = mp.solutions.hands
+    mp_draw = mp.solutions.drawing_utils
+
+    hands = mp_hands.Hands(
+        static_image_mode=False,
+        max_num_hands=1,
+        min_detection_confidence=settings["min_detection_confidence"],
+        min_tracking_confidence=settings["min_tracking_confidence"],
+    )
+
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print("Error: Cannot open webcam.")
+        return
+
+    # State
+    controller = GestureController()
+    smooth_x = Smoother(alpha=settings["smoothing_alpha"])
+    smooth_y = Smoother(alpha=settings["smoothing_alpha"])
+    prev_time = time.time()
+    prev_scroll_y = None
+
+    print("Gesture Mouse active. Press 'q' to quit.")
+    print("Move mouse to screen corner for emergency stop.")
+
+    # --- Main Loop ---
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        frame = cv2.flip(frame, 1)
+        h, w = frame.shape[:2]
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        results = hands.process(rgb)
+
+        hand_detected = results.multi_hand_landmarks is not None
+
+        if hand_detected:
+            hand = results.multi_hand_landmarks[0]
+
+            # Get positions
+            index_tip = hand.landmark[8]
+            ix, iy = int(index_tip.x * w), int(index_tip.y * h)
+
+            # Detect gestures
+            pinch, pinch_dist = is_pinching(hand, frame.shape)
+            pointing = is_pointing(hand)
+            open_hand = is_open_hand(hand)
+
+            # Map to screen coordinates
+            sx, sy = map_to_screen(ix, iy, w, h, settings["margin"])
+
+            # Smooth the coordinates
+            sx = smooth_x.update(sx)
+            sy = smooth_y.update(sy)
+
+            # Update state machine
+            state = controller.update(
+                True, pinch, pinch_dist, pointing, open_hand, sx, sy
+            )
+
+            # Act on the current state
+            if state == GestureState.MOVING:
+                pyautogui.moveTo(int(sx), int(sy))
+
+            elif state == GestureState.CLICKING:
+                pyautogui.click()
+
+            elif state == GestureState.SCROLLING:
+                if prev_scroll_y is not None:
+                    delta = prev_scroll_y - iy
+                    if abs(delta) > 5:
+                        pyautogui.scroll(int(delta / 10))
+                prev_scroll_y = iy
+
+            # Draw landmarks
+            mp_draw.draw_landmarks(frame, hand, mp_hands.HAND_CONNECTIONS)
+
+            # Draw debug overlay (see next section)
+            if settings["show_debug_overlay"]:
+                draw_debug_overlay(frame, state, pinch_dist, sx, sy, 0)
+
+        else:
+            smooth_x.reset()
+            smooth_y.reset()
+            prev_scroll_y = None
+            controller.update(False, False, 0, False, False, 0, 0)
+
+        # FPS calculation
+        curr_time = time.time()
+        fps = 1 / (curr_time - prev_time) if (curr_time - prev_time) > 0 else 0
+        prev_time = curr_time
+
+        cv2.putText(frame, f"FPS: {fps:.0f}", (w - 120, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+        cv2.imshow("Gesture Mouse", frame)
+
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            break
+
+    # --- Cleanup ---
+    cap.release()
+    cv2.destroyAllWindows()
+    hands.close()
+    print("Gesture Mouse stopped.")
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+        </div>
+
+        <p>This is the full loop. Frame in, process, act, display, repeat. Everything you built in Phases 1-3 clicks into place here.</p>
+    </section>
+
+    <!-- Debug Overlay -->
+    <section id="p4-debug">
+        <h3>Building a Debug Overlay</h3>
+
+        <p>A debug overlay is invaluable while you're tweaking settings. It shows you the current state, pinch distance, cursor position, and more &mdash; right on the video feed. Here's a full implementation:</p>
+
+        <div class="code-block">
+            <div class="code-header">
+                <span>debug_overlay.py</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre><code>import cv2
+
+# Color map for different states
+STATE_COLORS = {
+    "idle": (128, 128, 128),     # Gray
+    "moving": (0, 255, 0),       # Green
+    "clicking": (0, 0, 255),     # Red
+    "scrolling": (255, 165, 0),  # Orange
+}
+
+
+def draw_debug_overlay(frame, state, pinch_dist, screen_x, screen_y, fps):
+    """Draw a debug information overlay on the frame.
+
+    Shows current state, coordinates, pinch distance, and FPS.
+
+    Args:
+        frame: The OpenCV frame to draw on (modified in place).
+        state: Current GestureState enum value.
+        pinch_dist: Current distance between thumb and index.
+        screen_x: Mapped screen X coordinate.
+        screen_y: Mapped screen Y coordinate.
+        fps: Current frames per second.
+    """
+    h, w = frame.shape[:2]
+    state_name = state.value if hasattr(state, 'value') else str(state)
+    color = STATE_COLORS.get(state_name, (255, 255, 255))
+
+    # Semi-transparent background panel
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (5, h - 130), (260, h - 5), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+
+    # State with colored indicator dot
+    cv2.circle(frame, (20, h - 110), 6, color, -1)
+    cv2.putText(frame, f"State: {state_name.upper()}",
+                (35, h - 103), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
+
+    # Pinch distance with bar visualization
+    cv2.putText(frame, f"Pinch: {pinch_dist:.0f}px",
+                (15, h - 78), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+    bar_width = min(int(pinch_dist), 200)
+    bar_color = (0, 255, 0) if pinch_dist > 55 else (0, 0, 255)
+    cv2.rectangle(frame, (15, h - 68), (15 + bar_width, h - 60), bar_color, -1)
+
+    # Screen coordinates
+    cv2.putText(frame, f"Screen: ({int(screen_x)}, {int(screen_y)})",
+                (15, h - 43), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+
+    # FPS
+    cv2.putText(frame, f"FPS: {fps:.0f}",
+                (15, h - 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)</code></pre>
+        </div>
+    </section>
+
+    <!-- Extensions -->
+    <section id="p4-extensions">
+        <h3>Extension Ideas</h3>
+
+        <p>You've built a working gesture-controlled mouse. Here are some ways to take it further:</p>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Custom Gestures
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <ul>
+                    <li><strong>Two-finger pinch</strong> &mdash; Middle finger + thumb for right-click</li>
+                    <li><strong>Fist</strong> &mdash; Close all fingers for drag-and-drop (hold mouse down)</li>
+                    <li><strong>Peace sign</strong> &mdash; Index + middle extended for double-click</li>
+                    <li><strong>Swipe detection</strong> &mdash; Track velocity of hand movement for media controls</li>
+                    <li><strong>Finger counting</strong> &mdash; Map 1-5 fingers to different actions or app shortcuts</li>
+                </ul>
+                <p>Each of these follows the same pattern: define which landmarks to check, set a threshold, and add a new state to the state machine.</p>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Better Smoothing &amp; Prediction
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <ul>
+                    <li><strong>Kalman filter</strong> &mdash; A more sophisticated smoothing approach that predicts where your hand is going, reducing latency</li>
+                    <li><strong>Adaptive smoothing</strong> &mdash; Use low alpha when the hand is nearly still (precise positioning) and high alpha when it's moving fast (responsive tracking)</li>
+                    <li><strong>Velocity-based acceleration</strong> &mdash; Move cursor faster when hand moves quickly, like mouse acceleration in your OS</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                GUI &amp; Polish
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <ul>
+                    <li><strong>System tray icon</strong> &mdash; Run the app in the background with a tray icon to toggle on/off</li>
+                    <li><strong>Settings GUI</strong> &mdash; Build a settings panel with sliders using Tkinter or PyQt</li>
+                    <li><strong>Calibration wizard</strong> &mdash; Guide the user through adjusting thresholds by performing test gestures</li>
+                    <li><strong>Package as .exe / .app</strong> &mdash; Use PyInstaller to create a standalone application: <code>pyinstaller --onefile gesture_mouse.py</code></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Accessibility Applications
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <ul>
+                    <li><strong>Hands-free browsing</strong> &mdash; Map gestures to forward/back navigation</li>
+                    <li><strong>Presentation controller</strong> &mdash; Swipe gestures to advance slides</li>
+                    <li><strong>Music/video control</strong> &mdash; Gestures for play/pause, volume, skip</li>
+                    <li><strong>Assistive technology</strong> &mdash; Help people with limited mobility interact with their computer through gestures</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="milestone-box">
+            <div class="box-title">Phase 4 Milestone</div>
+            <p>You've built a complete, polished, gesture-controlled mouse application. You can track your hand, detect gestures, control the cursor smoothly, debug visually, and configure everything without editing code. That's a real project you can put on your resume or portfolio.</p>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- TROUBLESHOOTING -->
+    <!-- ============================================================ -->
+
+    <section id="troubleshooting">
+        <div class="phase-header">
+            <h2>Troubleshooting</h2>
+            <p>Things will break. Here's how to fix them.</p>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Installation &amp; Setup Issues
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Problem</th><th>Fix</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>pip install</code> fails with permission error</td>
+                                <td>Use <code>pip install --user opencv-python</code> or create a virtual environment: <code>python -m venv venv && source venv/bin/activate</code> (Mac/Linux) or <code>venv\Scripts\activate</code> (Windows)</td>
+                            </tr>
+                            <tr>
+                                <td><code>ModuleNotFoundError: No module named 'cv2'</code></td>
+                                <td>You likely have multiple Python versions. Try <code>python3 -m pip install opencv-python</code> or check which Python your IDE is using.</td>
+                            </tr>
+                            <tr>
+                                <td>MediaPipe won't install on Apple Silicon (M1/M2/M3)</td>
+                                <td>Try <code>pip install mediapipe-silicon</code> or install the latest version which has native ARM support.</td>
+                            </tr>
+                            <tr>
+                                <td><code>pyautogui</code> fails on Linux</td>
+                                <td>You may need <code>sudo apt install python3-tk python3-dev scrot</code> for screenshot/click support.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Webcam &amp; Video Issues
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Problem</th><th>Fix</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Webcam shows black frames</td>
+                                <td>Check privacy settings (System Preferences &rarr; Privacy &rarr; Camera on Mac). Close other apps using the camera.</td>
+                            </tr>
+                            <tr>
+                                <td>FPS is very low (&lt;10)</td>
+                                <td>Reduce webcam resolution: <code>cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)</code>. Close resource-heavy apps.</td>
+                            </tr>
+                            <tr>
+                                <td>Window freezes but program still runs</td>
+                                <td>Ensure <code>cv2.waitKey(1)</code> is called every loop iteration. OpenCV needs it to process window events.</td>
+                            </tr>
+                            <tr>
+                                <td>External USB webcam not detected</td>
+                                <td>Try <code>VideoCapture(1)</code> or <code>VideoCapture(2)</code>. Unplug and replug the camera.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Hand Tracking Issues
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Problem</th><th>Fix</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Hand not detected at all</td>
+                                <td>Improve lighting &mdash; MediaPipe struggles in dim light. Lower <code>min_detection_confidence</code> to 0.5.</td>
+                            </tr>
+                            <tr>
+                                <td>Tracking drops frequently</td>
+                                <td>Lower <code>min_tracking_confidence</code> to 0.3. Make sure your hand isn't too close or too far from the camera (1-3 feet is ideal).</td>
+                            </tr>
+                            <tr>
+                                <td>Wrong hand detected (left vs right)</td>
+                                <td>Check <code>results.multi_handedness</code> to identify which hand is detected. The thumb extension check may need to be flipped for left hands.</td>
+                            </tr>
+                            <tr>
+                                <td>Landmarks jitter badly</td>
+                                <td>Increase EMA smoothing (lower alpha) and ensure consistent lighting without flickering.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <button class="accordion-trigger" onclick="toggleAccordion(this)">
+                Mouse Control Issues
+                <span class="arrow">&#9660;</span>
+            </button>
+            <div class="accordion-content">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Problem</th><th>Fix</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Cursor won't move / FailSafeException</td>
+                                <td>Your physical mouse is probably in a corner. Move it away from the edges before running.</td>
+                            </tr>
+                            <tr>
+                                <td>Constant accidental clicks</td>
+                                <td>Increase <code>pinch_activate</code> threshold and <code>click_cooldown</code>. The pinch detection might be too sensitive.</td>
+                            </tr>
+                            <tr>
+                                <td>Can't reach screen edges</td>
+                                <td>Increase the <code>margin</code> parameter (try 0.2 or 0.25). This shrinks the control zone so edge positions map further on screen.</td>
+                            </tr>
+                            <tr>
+                                <td>Cursor feels "floaty" or delayed</td>
+                                <td>Increase EMA alpha toward 0.6-0.7 for more responsive (but slightly jittery) movement.</td>
+                            </tr>
+                            <tr>
+                                <td>Program won't stop / cursor hijacked</td>
+                                <td>Slam your mouse into any screen corner to trigger the PyAutoGUI fail-safe. If that fails, use Ctrl+C in the terminal.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- RESOURCES -->
+    <!-- ============================================================ -->
+
+    <section id="resources">
+        <div class="phase-header">
+            <h2>Resources</h2>
+            <p>Everything you need to go deeper.</p>
+        </div>
+
+        <h3>Official Documentation</h3>
+        <ul>
+            <li><a href="https://docs.opencv.org/4.x/" target="_blank">OpenCV Documentation</a> &mdash; Full reference for every function</li>
+            <li><a href="https://google.github.io/mediapipe/solutions/hands.html" target="_blank">MediaPipe Hands</a> &mdash; Architecture, parameters, and model details</li>
+            <li><a href="https://pyautogui.readthedocs.io/" target="_blank">PyAutoGUI Documentation</a> &mdash; All mouse, keyboard, and screenshot functions</li>
+            <li><a href="https://numpy.org/doc/stable/" target="_blank">NumPy Documentation</a> &mdash; Essential for understanding image arrays</li>
+        </ul>
+
+        <h3>Learning Resources</h3>
+        <ul>
+            <li><a href="https://realpython.com/" target="_blank">Real Python</a> &mdash; Excellent Python tutorials for beginners and intermediate</li>
+            <li><a href="https://www.learnopencv.com/" target="_blank">LearnOpenCV</a> &mdash; Computer vision tutorials with practical examples</li>
+            <li><a href="https://www.youtube.com/c/Mediapipe" target="_blank">MediaPipe YouTube</a> &mdash; Video demos and walkthroughs</li>
+            <li><a href="https://developers.google.com/mediapipe" target="_blank">Google MediaPipe Developer Hub</a> &mdash; Latest models and API updates</li>
+        </ul>
+
+        <h3>Python Concepts Used in This Project</h3>
+        <ul>
+            <li><strong>Classes and Objects</strong> &mdash; <code>Smoother</code>, <code>GestureController</code></li>
+            <li><strong>Enums</strong> &mdash; <code>GestureState</code> for type-safe state management</li>
+            <li><strong>File I/O and JSON</strong> &mdash; Loading and saving settings</li>
+            <li><strong>NumPy arrays</strong> &mdash; Every video frame is a multidimensional array</li>
+            <li><strong>Exception handling</strong> &mdash; Graceful error recovery and fail-safes</li>
+            <li><strong>State machines</strong> &mdash; Managing complex behavior with predictable transitions</li>
+        </ul>
+
+        <h3>Tools &amp; Setup</h3>
+        <ul>
+            <li><a href="https://www.python.org/downloads/" target="_blank">Python Downloads</a></li>
+            <li><a href="https://code.visualstudio.com/" target="_blank">VS Code</a> &mdash; Recommended editor with great Python support</li>
+            <li><a href="https://www.pyinstaller.org/" target="_blank">PyInstaller</a> &mdash; Package your Python script as a standalone executable</li>
+        </ul>
+    </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+    <p>Powered by <a href="#">Mantum Tech</a></p>
+    <p style="margin-top: 0.35rem; font-size: 0.78rem;">Built with OpenCV, MediaPipe, and PyAutoGUI. All tools are free and open-source.</p>
+</footer>
+
+<script>
+    // ============================================================
+    // Sidebar Navigation & Progress Tracking
+    // ============================================================
+
+    const STORAGE_KEY = 'gesture-guide-progress';
+
+    function loadProgress() {
+        try {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveProgress(progress) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+        } catch (e) {
+            // localStorage unavailable; silently fail
+        }
+    }
+
+    function updateProgressBar() {
+        const checkboxes = document.querySelectorAll('.sidebar-link input[type="checkbox"]');
+        const total = checkboxes.length;
+        const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+        const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+        const fill = document.getElementById('progressFill');
+        const label = document.getElementById('progressLabel');
+        if (fill) fill.style.width = pct + '%';
+        if (label) label.textContent = pct + '% complete';
+    }
+
+    function initProgress() {
+        const progress = loadProgress();
+        const checkboxes = document.querySelectorAll('.sidebar-link input[type="checkbox"]');
+
+        checkboxes.forEach(cb => {
+            const step = cb.getAttribute('data-step');
+            if (progress[step]) {
+                cb.checked = true;
+            }
+
+            cb.addEventListener('change', () => {
+                const p = loadProgress();
+                p[step] = cb.checked;
+                saveProgress(p);
+                updateProgressBar();
+            });
+        });
+
+        updateProgressBar();
+    }
+
+    // Sidebar link click scrolls to section
+    document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            // Don't scroll if user clicked the checkbox itself
+            if (e.target.tagName === 'INPUT') return;
+
+            const targetId = link.getAttribute('data-target');
+            const target = document.getElementById(targetId);
+            if (target) {
+                const offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 64;
+                const y = target.getBoundingClientRect().top + window.scrollY - offset - 20;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+
+            // Close sidebar on mobile
+            if (window.innerWidth <= 900) {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('hamburger').classList.remove('active');
+                document.getElementById('sidebarOverlay').classList.remove('active');
+            }
+        });
+    });
+
+    // ============================================================
+    // Mobile Hamburger Menu
+    // ============================================================
+
+    const hamburger = document.getElementById('hamburger');
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    hamburger.addEventListener('click', () => {
+        hamburger.classList.toggle('active');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+    });
+
+    overlay.addEventListener('click', () => {
+        hamburger.classList.remove('active');
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+    });
+
+    // ============================================================
+    // Accordion Toggle
+    // ============================================================
+
+    function toggleAccordion(trigger) {
+        const content = trigger.nextElementSibling;
+        const isOpen = content.classList.contains('open');
+
+        // Close all accordions (optional: remove this block for independent toggles)
+        // document.querySelectorAll('.accordion-content').forEach(c => c.classList.remove('open'));
+        // document.querySelectorAll('.accordion-trigger').forEach(t => t.classList.remove('open'));
+
+        if (!isOpen) {
+            content.classList.add('open');
+            trigger.classList.add('open');
+        } else {
+            content.classList.remove('open');
+            trigger.classList.remove('open');
+        }
+    }
+
+    // ============================================================
+    // Copy Code Button
+    // ============================================================
+
+    function copyCode(btn) {
+        const codeBlock = btn.closest('.code-block');
+        const code = codeBlock.querySelector('pre code') || codeBlock.querySelector('pre');
+        const text = code.innerText;
+
+        navigator.clipboard.writeText(text).then(() => {
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.style.color = '#22c55e';
+            setTimeout(() => {
+                btn.textContent = original;
+                btn.style.color = '';
+            }, 1500);
+        }).catch(() => {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                btn.textContent = 'Copied!';
+                setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+            } catch (e) {
+                btn.textContent = 'Failed';
+                setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+            }
+            document.body.removeChild(textarea);
+        });
+    }
+
+    // ============================================================
+    // Active Section Highlighting
+    // ============================================================
+
+    function highlightActiveSection() {
+        const sections = document.querySelectorAll('section[id]');
+        const links = document.querySelectorAll('.sidebar-link[data-target]');
+        const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 64;
+
+        let currentId = '';
+
+        sections.forEach(section => {
+            const top = section.getBoundingClientRect().top;
+            if (top <= headerH + 80) {
+                currentId = section.id;
+            }
+        });
+
+        links.forEach(link => {
+            link.classList.toggle('active', link.getAttribute('data-target') === currentId);
+        });
+    }
+
+    window.addEventListener('scroll', highlightActiveSection, { passive: true });
+
+    // ============================================================
+    // Init
+    // ============================================================
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initProgress();
+        highlightActiveSection();
+    });
+</script>
+
+</body>
+</html>
